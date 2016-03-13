@@ -5,49 +5,18 @@ library(shiny)
 
 ui <- shinyUI(fluidPage(
 
-  # Application title
-  titlePanel("Test"),
+  titlePanel("Test bingo"),
   mainPanel(
-    fluidRow(
-      column(3,
-             checkboxInput("cb1.1", label="1.1")),
-      column(3,
-             checkboxInput("cb1.2", label="1.2")),
-      column(3,
-             checkboxInput("cb1.3", label="1.3")),
-      column(3,
-             checkboxInput("cb1.4", label="1.4"))
-    ),
-    fluidRow(
-      column(3,
-             checkboxInput("cb2.1", label="2.1")),
-      column(3,
-             checkboxInput("cb2.2", label="2.2")),
-      column(3,
-             checkboxInput("cb2.3", label="2.3")),
-      column(3,
-             checkboxInput("cb2.4", label="2.4"))
-    ),
-    fluidRow(
-      column(3,
-             checkboxInput("cb3.1", label="3.1")),
-      column(3,
-             checkboxInput("cb3.2", label="3.2")),
-      column(3,
-             checkboxInput("cb3.3", label="3.3")),
-      column(3,
-             checkboxInput("cb3.4", label="3.4"))
-    ),
-    fluidRow(
-      column(3,
-             checkboxInput("cb4.1", label="4.1")),
-      column(3,
-             checkboxInput("cb4.2", label="4.2")),
-      column(3,
-             checkboxInput("cb4.3", label="4.3")),
-      column(3,
-             checkboxInput("cb4.4", label="4.4"))
-    ),
+
+    lapply(1:4, function(i) {
+      fluidRow(
+        lapply(1:4, function(j) {
+          column(3,
+                 checkboxInput(paste0('cb', i, ".", j), label = paste0(i, ".", j)))
+        })
+      )
+    }),
+
     textOutput("grid_check_info")
   )
 )
