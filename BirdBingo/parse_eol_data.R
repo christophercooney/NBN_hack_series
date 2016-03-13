@@ -29,10 +29,10 @@ for (i in seq_along(imageObjs)) {
   mediaUrl[[i]] <- unlist(imgObj$mediaURL)
 }
 
-licenseInfo <- cbind(licenseUrl = unlist(licenseUrl),
-                     url_parse(unlist(licenseUrl)),
-                     sourceUrl = unlist(sourceUrl),
-                     rightsHolder = unlist(rightsHolder))
+licenseInfo <- cbind(licenseUrl = licenseUrl,
+                     #url_parse(licenseUrl),
+                     sourceUrl = sourceUrl,
+                     rightsHolder = rightsHolder)
 
 # Attribution: Title, Source, Author, License  e.g. Photo by XXXX / CC BY
 # Source: dc:source
