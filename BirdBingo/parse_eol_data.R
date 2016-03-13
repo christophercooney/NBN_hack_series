@@ -3,7 +3,7 @@ library(xml2)
 
 MyTaxa <- c("Camelus dromedarius")
 MyEOLs <- DownloadSearchedTaxa(MyTaxa, to.file=FALSE)
-#data(MyEOLs)
+data(MyEOLs)
 #PageProcessing(MyEOLs[1])
 
 # Parse XML document
@@ -20,18 +20,13 @@ imageObjs <- dataObjs[mimeTypes=="image/jpeg"]
 # Get license info
 licenseUrl <- sourceUrl <- rightsHolder <- mediaUrl <- list()
 for (i in seq_along(imageObjs)) {
-  obj <- imageObjs[[i]]
+  ## Convert to R list object
+  imgObj <- as_list(imageObjs[[i]])
 
-  lic <- try(xml_find_one(obj, ".//d1:license", ns=nsData), silent = TRUE)
-  licenseUrl[[i]] <- ifelse (inherits(lic, "try-error"), NA, xml_text(lic))
-
-  src <- try(xml_find_one(obj, ".//dc:source", ns=nsData), silent = TRUE)
-  sourceUrl[[i]] <- ifelse (inherits(src, "try-error"), NA, xml_text(src))
-
-  rh <- try(xml_find_one(obj, ".//dcterms:rightsHolder", ns=nsData), silent = TRUE)
-  rightsHolder[[i]] <- ifelse (inherits(rh, "try-error"), NA, xml_text(rh))
-
-  mediaUrl[[i]] <- xml_text(xml_find_all(obj, ".//d1:mediaURL", ns=nsData))
+  licenseUrl[[i]] <- unlist(imgObj$license)
+  sourceUrl[[i]] <- unlist(imgObj$source)
+  rightsHolder[[i]] <- ifelse(is.null(imgObj$rightsHolder), NA, unlist(imgObj$rightsHolder))
+  mediaUrl[[i]] <- unlist(imgObj$mediaURL)
 }
 
 licenseInfo <- cbind(licenseUrl = unlist(licenseUrl),
@@ -40,9 +35,8 @@ licenseInfo <- cbind(licenseUrl = unlist(licenseUrl),
                      rightsHolder = unlist(rightsHolder))
 
 # Attribution: Title, Source, Author, License  e.g. Photo by XXXX / CC BY
-# dc:description ? not any good really
-# dc:source
-# dcterms:rightsholder
+# Source: dc:source
+# Author: dcterms:rightsholder
 #
 # tags$a(href=sourceUrl, "Photo")
 # tags$a(href=licenseUrl, "BY-SA")
