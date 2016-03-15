@@ -15,19 +15,18 @@ shef_data <- shef_data[shef_data$pTaxonVersionKey %in% birdTVKs,]
 spp <- table(shef_data$pTaxonName)
 spp <- spp[order(spp, decreasing = T)]
 
-spp.names <- names(spp)[1:50]
+spp.names <- names(spp)[1:200] # Pick number of species to include
 
 sppdat <- MatchTaxatoEOLID(spp.names, exact = T)
 sppdat <- sppdat[!is.na(sppdat$eolPageNumbers),]
 
-spp <- spp[names(spp) %in% sppdat$ListOfTaxa]
+sppdat$N_records <- spp[match(sppdat$ListOfTaxa, names(spp))] # Attach number of records (i.e. commonness)
 
-spp.list <- as.numeric(sample(sppdat$eolPageNumbers, size = 25, prob = spp, replace=F))
+#spp.list <- as.numeric(sample(sppdat$eolPageNumbers, size = length(sppdat$eolPageNumbers), prob = spp, replace=F))
+#chosen.names <- sppdat$ListOfTaxa[match(spp.list, sppdat$eolPageNumbers)]
 
-chosen.names <- sppdat$ListOfTaxa[match(spp.list, sppdat$eolPageNumbers)]
-
-myEOL <- DownloadEOLpages(spp.list, to.file = FALSE)
-DataObjectOverview(myEOL)
+myEOL <- DownloadEOLpages(sppdat$eolPageNumbers, to.file = FALSE)
+#DataObjectOverview(myEOL)
 
 #PageProcessing(data1[1])
 
@@ -54,9 +53,9 @@ for (i in 1:length(myEOL)) {
       rightsHolder[[j]] <- ifelse(is.null(imgObj$rightsHolder), NA, unlist(imgObj$rightsHolder))
 
       # There are two mediaURL entries (original image and EOL copy), this only gets the first:
-      mediaUrl[[j]] <- unlist(imgObj$mediaURL)
+      #mediaUrl[[j]] <- unlist(imgObj$mediaURL)
       # Use this to get both URLs:
-      #mediaUrl[[j]] <- xml_text(xml_find_all(imageObjs[[j]], ".//d1:mediaURL", ns=nsData))
+      mediaUrl[[j]] <- xml_text(xml_find_all(imageObjs[[j]], ".//d1:mediaURL", ns=nsData))
     }
     url.list[[i]] <- list(mediaUrl = unlist(mediaUrl),
                           licenseUrl = unlist(licenseUrl),
@@ -64,11 +63,14 @@ for (i in 1:length(myEOL)) {
                           rightsHolder = unlist(rightsHolder))
 }
 
+#save(sppdat, url.list, file = "/Users/chriscooney/Documents/Workflows/NBN_hack_series/BirdBingo/AppData.Rdata")
+
+
 # # # UI # # #
 
 img.height <- "200px"
 img.width <- "150px"
-grid.size <- 4
+grid.size <- 3
 col.width <- 3
 
 ui <- fluidPage(
@@ -79,7 +81,7 @@ ui <- fluidPage(
       fluidRow(
         lapply(1:grid.size, function(j) {
           column(col.width,
-                 h5(chosen.names[(i-1)*grid.size+j]),
+                 h5(sppdat$ListOfTaxa[(i-1)*grid.size+j]),
                  imageOutput(paste0("image", i, ".", j),
                              width=img.width, height=img.height,
                              click = paste0("image_click", i, ".", j)),
@@ -123,13 +125,13 @@ server <- function(input, output, session) {
         # A temp file to save the output
         outfile <- tempfile(fileext='.jpg')
         # TODO catch problem downloading image
-        download.file(imageInfo$mediaUrl, outfile)
+        download.file(imageInfo$mediaUrl[2], outfile)
 
         list(
           src = outfile,
           width = img.width,
           contentType = "image/jpeg",
-          alt = chosen.names[index]
+          alt = sppdat$ListOfTaxa[index]
         )
       }, deleteFile = FALSE)
 

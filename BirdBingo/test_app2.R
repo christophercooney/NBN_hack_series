@@ -11,7 +11,7 @@ img.height <- "150px"
 col.width <- 4
 
 ui <- shinyUI(fluidPage(
-  includeCSS("./NBN_hack_series/BirdBingo/styles.css"),
+  #includeCSS("./NBN_hack_series/BirdBingo/styles.css"),
 
   titlePanel("Test bingo"),
   mainPanel(
@@ -65,7 +65,7 @@ server <- shinyServer(function(input, output) {
         # A temp file to save the output
         outfile <- tempfile(fileext='.jpg')
         # TODO catch problem downloading image
-        download.file(imageInfo$mediaUrl, outfile)
+        download.file(imageInfo$mediaUrl, outfile, method="curl")
 
         list(
           src = outfile,
