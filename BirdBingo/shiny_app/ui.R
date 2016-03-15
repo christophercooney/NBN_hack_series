@@ -36,17 +36,33 @@ url.list <- as.list(rep(NA, length(myEOL)))
 for (i in 1:length(myEOL)) {
     furls <- c()
     myxml <- read_xml(myEOL[[i]])
-    mediaURLs <- xml_find_all(myxml, ".//d1:mediaURL", ns=xml_ns(myxml))
-    #url.show(xml_text(mediaURLs[1]))
-    for (j in 1:length(mediaURLs)) {
-        text <- xml_text(mediaURLs[j])
-        if (any(grep(".jpg", text, fixed=T))) {
-            furls <- c(furls, xml_text(mediaURLs[j]))
-        }
-    }
-    url.list[[i]] <- sample(furls, 4)
-}
+    nsData <- xml_ns(myxml)
 
+    # Find data objects with appropriate mime type (image/jpeg)
+    dataObjs <- xml_find_all(myxml, ".//d1:dataObject", ns=nsData)
+    mimeTypes <- xml_text(xml_find_all(dataObjs, ".//d1:mimeType", ns=nsData))
+    imageObjs <- dataObjs[mimeTypes=="image/jpeg"]
+
+    # Get media URL and license info
+    licenseUrl <- sourceUrl <- rightsHolder <- mediaUrl <- list()
+    for (j in seq_along(imageObjs)) {
+      ## Convert to R list object for convenience
+      imgObj <- as_list(imageObjs[[j]])
+
+      licenseUrl[[j]] <- unlist(imgObj$license)
+      sourceUrl[[j]] <- unlist(imgObj$source)
+      rightsHolder[[j]] <- ifelse(is.null(imgObj$rightsHolder), NA, unlist(imgObj$rightsHolder))
+
+      # There are two mediaURL entries (original image and EOL copy), this only gets the first:
+      mediaUrl[[j]] <- unlist(imgObj$mediaURL)
+      # Use this to get both URLs:
+      #mediaUrl[[j]] <- xml_text(xml_find_all(imageObjs[[j]], ".//d1:mediaURL", ns=nsData))
+    }
+    url.list[[i]] <- list(mediaUrl = unlist(mediaUrl),
+                          licenseUrl = unlist(licenseUrl),
+                          sourceUrl = unlist(sourceUrl),
+                          rightsHolder = unlist(rightsHolder))
+}
 
 # # # UI # # #
 
