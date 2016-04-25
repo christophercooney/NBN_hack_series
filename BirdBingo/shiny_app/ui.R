@@ -1,21 +1,29 @@
 
 rm(list=ls())
 
-library(shiny); library(Reol); library(xml2); library(rnbn)
+library(shiny); library(Reol); library(xml2); library(rnbn); library(stringr)
 
-#taxo <- read.csv("/Users/chriscooney/Google Drive/CRCStorage/Datasets/TaxonomicData/Edited checklists/BLIOCPhyloMasterTax_2015_05_06.csv")
+# Quick fix for Reol bug when matching EOL entries for instances where search
+# returns more than one result for the same EOL ID
+insertSource("./NBN_hack_series/BirdBingo/MatchTaxatoEOLID.R", package = "Reol", functions = "MatchTaxatoEOLID")
 
 nbnLogin(username = "drcrc", password = "Turdusmerula")
 
-load("/Users/chriscooney/Documents/Workflows/NBN_hack_series/BirdBingo/shiny_app/shef_data.rdata")
- 
+load("./NBN_hack_series/BirdBingo/shiny_app/shef_data.rdata")
+
 birdTVKs <- getGroupSpeciesTVKs("bird")
 shef_data <- shef_data[shef_data$pTaxonVersionKey %in% birdTVKs,]
+
+save(shef_data, file = "./NBN_hack_series/BirdBingo/ShefBirdData.Rdata")
+
+load("./NBN_hack_series/BirdBingo/ShefBirdData.Rdata")
 
 spp <- table(shef_data$pTaxonName)
 spp <- spp[order(spp, decreasing = T)]
 
-spp.names <- names(spp)[1:200] # Pick number of species to include
+spp.names <- names(spp)[1:40] # Pick number of species to include
+
+# FIXME: drop species if name contains < 2 words, as some entries are genus only
 
 sppdat <- MatchTaxatoEOLID(spp.names, exact = T)
 sppdat <- sppdat[!is.na(sppdat$eolPageNumbers),]
@@ -33,7 +41,6 @@ myEOL <- DownloadEOLpages(sppdat$eolPageNumbers, to.file = FALSE)
 url.list <- as.list(rep(NA, length(myEOL)))
 
 for (i in 1:length(myEOL)) {
-    furls <- c()
     myxml <- read_xml(myEOL[[i]])
     nsData <- xml_ns(myxml)
 
@@ -63,33 +70,51 @@ for (i in 1:length(myEOL)) {
                           rightsHolder = unlist(rightsHolder))
 }
 
-#save(sppdat, url.list, file = "/Users/chriscooney/Documents/Workflows/NBN_hack_series/BirdBingo/AppData.Rdata")
+save(sppdat, spp, url.list, file = "./NBN_hack_series/BirdBingo/AppData.Rdata")
 
+load(file = "./NBN_hack_series/BirdBingo/AppData.Rdata")
 
 # # # UI # # #
 
-img.height <- "200px"
+img.height <- "150px"
 img.width <- "150px"
 grid.size <- 3
 col.width <- 3
 
 ui <- fluidPage(
+    includeCSS("styles.css"),
+
     # Application title
     titlePanel("Bird Bingo!"),
     hr(),
+    fluidRow(
+      column(3*col.width,
+        uiOutput("grid_check_info")
+      )
+    ),
     lapply(1:grid.size, function(i) {
       fluidRow(
         lapply(1:grid.size, function(j) {
           column(col.width,
-                 h5(sppdat$ListOfTaxa[(i-1)*grid.size+j]),
-                 imageOutput(paste0("image", i, ".", j),
-                             width=img.width, height=img.height,
-                             click = paste0("image_click", i, ".", j)),
-                 textOutput(paste0("image_info", i, ".", j)))
+                 div(
+                   uiOutput(paste0("image_title", i, ".", j),
+                            class = "bb-image-title"),
+                   div(
+                     imageOutput(paste0("image", i, ".", j),
+                                 height=img.height,
+                                 click = paste0("image_click", i, ".", j)),
+                     uiOutput(paste0("image_overlay", i, ".", j),
+                              class = "bb-image-overlay"),
+                     class="bb-image"
+                   ),
+                   uiOutput(paste0("image_info", i, ".", j),
+                            class = "bb-photo-credit"),
+                   class = "bb-square"
+                 )
+          )
         })
       )
-    }),
-    textOutput("grid_check_info")
+    })
 )
 
 checkGrid <- function(input) {
@@ -107,38 +132,96 @@ checkGrid <- function(input) {
 }
 
 server <- function(input, output, session) {
+  addResourcePath("images", "./NBN_hack_series/BirdBingo/shiny_app/images")
 
-  output$grid_check_info <- renderPrint({
+  output$grid_check_info <- renderUI({
     if (checkGrid(input)) {
-      cat("BINGO!\n")
+      div("BINGO!", class="bb-bingo")
     }
   })
 
   # Image output:
+  n.urls <- grid.size^2
+  spp.index <- sample(c(1:length(sppdat$eolPageNumbers)),
+                      size = n.urls, ##prob = spp[sppdat$ListOfTaxa],
+                      replace=F)
+
   lapply(1:grid.size, function(i) {
     lapply(1:grid.size, function(j) {
+      index <- (i-1)*grid.size+j
+      imageInfo <- url.list[[spp.index[index]]]
+
+      titleId <- paste0('image_title', i, ".", j)
+      output[[titleId]] <- renderUI ({
+        h2(sppdat$ListOfTaxa[spp.index[index]])
+      })
+
       imgId <- paste0('image', i, ".", j)
       output[[imgId]] <- renderImage({
-        index <- (i-1)*grid.size+j
-        imageInfo <- url.list[[index]]
 
         # A temp file to save the output
         outfile <- tempfile(fileext='.jpg')
-        # TODO catch problem downloading image
-        download.file(imageInfo$mediaUrl[2], outfile)
+        # FIXME catch problem downloading image
+        download.file(imageInfo$mediaUrl[2], outfile, method = "libcurl")
 
+        # FIXME specify width/height according to image orientation
         list(
           src = outfile,
-          width = img.width,
+          width = "100%",
           contentType = "image/jpeg",
           alt = sppdat$ListOfTaxa[index]
         )
       }, deleteFile = FALSE)
 
+      infoId <- paste0('image_info', i, ".", j)
+      output[[infoId]] <- renderUI ({
+
+        # Attribution: Title, Source, Author, License  e.g. Photo by XXXX / CC BY
+        # Source: dc:source
+        # Author: dcterms:rightsholder
+
+        # Title (extract file name from source URL)
+        src <- imageInfo$sourceUrl[1]
+        src_path <- unlist(strsplit(url_parse(src)$path, split="[/]"))
+        src_path <- src_path[length(src_path)]
+        src_path <- str_replace(src_path, "^File:", "")
+        src_path <- str_replace_all(src_path, "_", "-")
+
+        # Author (use rights holder)
+        rh <- imageInfo$rightsHolder[1]
+
+        # License e.g.
+        # http://creativecommons.org/licenses/by-sa/2.5/
+        lic_text <- lic_url <- imageInfo$licenseUrl[1]
+        lic <- url_parse(lic_url)
+        # Parse known license types
+        if (match("creativecommons.org", lic$server)) {
+          path <- unlist(strsplit(lic$path, split="[/]"))
+          if ("licenses" %in% path) {
+            lic_text <- paste("CC", str_to_upper(path[3]), sep = "-")
+          } else {
+            lic_text <- "Public domain"
+          }
+          lic_text <- str_c("(", lic_text, ")")
+        }
+
+        list(
+          tags$a(href=src, src_path),
+          tags$span(ifelse(!is.na(rh), paste("by", rh), "")),
+          tags$a(href=lic_url, lic_text)
+        )
+      })
+
       # interaction click in image
       observeEvent(input[[paste0('image_click', i, ".", j)]], {
-        output[[paste0('image_info', i, ".", j)]] <- renderPrint({
-          cat("Seen it!\n")
+        output[[paste0('image_overlay', i, ".", j)]] <- renderUI({
+          list(
+            tags$img(
+              src = "images/overlay.png",
+              width = "100%",
+              class = "bb-image-overlay"
+            )
+          )
         })
       })
     })

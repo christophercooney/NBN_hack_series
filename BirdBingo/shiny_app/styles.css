@@ -1,0 +1,23 @@
+img { border: 5px solid transparent; }
+
+.bb-photo-credit { font-size: 0.75em; }
+.bb-photo-credit a { color: #666;}
+
+.bb-square { text-align: center; vertical-align: middle; }
+.bb-square h2 { font-size: 1.2em; }
+
+.bb-image { position: relative; }
+.bb-image > .bb-image-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+.bb-image .shiny-image-output img:hover { border-color: #3974C4; }
+
+.bb-bingo {
+  font-size: 1.3em;
+  font-style: bold;
+  color: #3974C4;
+  text-align: center;
+}

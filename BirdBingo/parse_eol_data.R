@@ -1,13 +1,22 @@
+rm(list=ls())
+
 library(Reol)
 library(xml2)
 
-MyTaxa <- c("Camelus dromedarius")
-MyEOLs <- DownloadSearchedTaxa(MyTaxa, to.file=FALSE)
-data(MyEOLs)
+# Quick fix for matching EOL entries for instances where search returns more
+# than one result for the same EOL ID
+insertSource("MatchTaxatoEOLID.R", package = "Reol", functions = "MatchTaxatoEOLID")
+
+MyTaxa <- c("Turdus merula")
+MatchTaxatoEOLID(MyTaxa, exact = T)
+eolData <- DownloadSearchedTaxa(MyTaxa, to.file=FALSE, exact=TRUE)
+
+# Load example EOL data
+#data(MyEOLs)
 #PageProcessing(MyEOLs[1])
 
 # Parse XML document
-myxml <- read_xml(MyEOLs[[1]])
+myxml <- read_xml(eolData[[1]])
 #xmllist <- as_list(myxml)
 
 nsData <- xml_ns(myxml)
