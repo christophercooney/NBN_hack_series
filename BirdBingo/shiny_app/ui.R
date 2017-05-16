@@ -82,7 +82,7 @@ grid.size <- 3
 col.width <- 3
 
 ui <- fluidPage(
-    includeCSS("styles.css"),
+    includeCSS("./NBN_hack_series/BirdBingo/shiny_app/styles.css"),
 
     # Application title
     titlePanel("Bird Bingo!"),

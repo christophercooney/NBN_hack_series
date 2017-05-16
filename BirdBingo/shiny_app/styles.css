@@ -1,6 +1,6 @@
 img { border: 5px solid transparent; }
 
-.bb-photo-credit { font-size: 0.75em; }
+.bb-photo-credit { font-size: 0.75em; float: left; }
 .bb-photo-credit a { color: #666;}
 
 .bb-square { text-align: center; vertical-align: middle; }
@@ -16,8 +16,12 @@ img { border: 5px solid transparent; }
 .bb-image .shiny-image-output img:hover { border-color: #3974C4; }
 
 .bb-bingo {
-  font-size: 1.3em;
+  font-size: 8em;
   font-style: bold;
   color: #3974C4;
   text-align: center;
+  position: absolute;
+  width: 100%;
+  top: 280px;
+  z-index: 1000;
 }
